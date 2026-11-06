@@ -54,21 +54,6 @@ jobs:
       - name: Setup dependencies
         shell: bash
         run: |
-          # workaround for ncurses riscv64 build failure
-          if [[ "${{ matrix.target }}" = "riscv64" ]]; then
-              echo "deb [arch=riscv64] http://ports.ubuntu.com/ubuntu-ports jammy main restricted universe multiverse" | tee -a /etc/apt/sources.list
-              echo "deb [arch=riscv64] http://ports.ubuntu.com/ubuntu-ports jammy-updates main restricted universe multiverse" | tee -a /etc/apt/sources.list
-              echo "deb [arch=riscv64] http://ports.ubuntu.com/ubuntu-ports jammy-backports main restricted universe multiverse" | tee -a /etc/apt/sources.list
-              apt-get update -qq
-              apt-get purge -yqq libncurses-dev
-              apt-get install -yqq wget
-              wget \
-                  http://kx.studio/tmp/libtinfo6_6.3-2ubuntu0.1_amd64.deb \
-                  http://kx.studio/tmp/libncurses6_6.3-2ubuntu0.1_amd64.deb \
-                  http://kx.studio/tmp/libncursesw6_6.3-2ubuntu0.1_amd64.deb \
-                  && dpkg -i *.deb && rm *.deb
-              apt-get install -yqq libtinfo6:riscv64
-          fi
           ./deps/PawPaw/.github/workflows/bootstrap-deps.sh linux-${{ matrix.target }}
           apt-get install -yqq wget zip
       - name: Setup dependencies (aarch64)
@@ -172,532 +157,532 @@ jobs:
           path: |
             *.tar.xz
 
-  macos:
-    runs-on: macos-15
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          submodules: recursive
-      - name: Set up cache
-        id: cache
-        uses: actions/cache@v4
-        with:
-          path: |
-            ~/PawPawBuilds
-            src/Rack/dep/bin
-            src/Rack/dep/include
-            src/Rack/dep/lib
-            src/Rack/dep/share
-            src/Rack/dep/jansson-2.12
-            src/Rack/dep/libarchive-3.4.3
-            src/Rack/dep/libsamplerate-0.1.9
-            src/Rack/dep/zstd-1.4.5
-          key: macos-universal-v${{ env.CACHE_VERSION }}
-      - name: Setup dependencies
-        run: |
-          brew uninstall --force --ignore-dependencies cmake
-          ./deps/PawPaw/.github/workflows/bootstrap-deps.sh macos-universal-10.15
-      - name: Build extra dependencies
-        run: |
-          export PATH="/usr/local/opt/ccache/libexec:${PATH}"
-          ./deps/PawPaw/bootstrap-cardinal.sh macos-universal-10.15 && ./deps/PawPaw/.cleanup.sh macos-universal-10.15
-      - name: Set up ccache
-        if: steps.cache.outputs.cache-hit == 'true'
-        uses: hendrikmuhs/ccache-action@v1.2
-        with:
-          key: ccache-macos-universal-v${{ env.CACHE_VERSION }}
-      - name: Build macOS (base)
-        if: steps.cache.outputs.cache-hit == 'true'
-        shell: bash
-        run: |
-          export PATH="/usr/local/opt/ccache/libexec:${PATH}"
-          source deps/PawPaw/local.env macos-universal-10.15
-          make features
-          make NOOPT=true ${MAKE_ARGS} -j $(sysctl -n hw.logicalcpu)
-      - name: Build macOS (packaging)
-        if: steps.cache.outputs.cache-hit == 'true'
-        shell: bash
-        env:
-          MACOS_APP_CERTIFICATE: ${{ secrets.MACOS_APP_CERTIFICATE }}
-          MACOS_INSTALLER_CERTIFICATE: ${{ secrets.MACOS_INSTALLER_CERTIFICATE }}
-          MACOS_CERTIFICATE_PASSWORD: ${{ secrets.MACOS_CERTIFICATE_PASSWORD }}
-          MACOS_NOTARIZATION_USER: ${{ secrets.MACOS_NOTARIZATION_USER }}
-          MACOS_NOTARIZATION_PASS: ${{ secrets.MACOS_NOTARIZATION_PASS }}
-          MACOS_NOTARIZATION_TEAM: ${{ secrets.MACOS_NOTARIZATION_TEAM }}
-        run: |
-          source deps/PawPaw/local.env macos-universal-10.15
-          ./utils/create-macos-installer.sh
-      - name: Set sha8 (non-release)
-        if: startsWith(github.ref, 'refs/tags/') != true
-        run: echo "SHA8=$(echo ${{ github.sha }} | cut -c1-8)" >> $GITHUB_ENV
-      - name: Set sha8 (release)
-        if: startsWith(github.ref, 'refs/tags/')
-        run: echo "SHA8=$(echo ${{ github.ref_name }})" >> $GITHUB_ENV
-      - name: Rename macOS bundle
-        if: steps.cache.outputs.cache-hit == 'true'
-        run: |
-          mv ${{ github.event.repository.name }}-macOS.pkg ${{ github.event.repository.name }}-macOS-universal-${{ github.event.pull_request.number || env.SHA8 }}.pkg
-      - uses: actions/upload-artifact@v4
-        with:
-          name: ${{ github.event.repository.name }}-macOS-universal-${{ github.event.pull_request.number || env.SHA8 }}
-          path: |
-            ${{ github.event.repository.name }}-*.pkg
-      - uses: softprops/action-gh-release@v1
-        if: ${{ matrix.debug == '0' && startsWith(github.ref, 'refs/tags/') }}
-        with:
-          tag_name: ${{ github.ref_name }}
-          name: ${{ github.ref_name }}
-          draft: false
-          prerelease: false
-          files: |
-            ${{ github.event.repository.name }}-*.pkg
+  # macos:
+  #   runs-on: macos-15
+  #   steps:
+  #     - uses: actions/checkout@v4
+  #       with:
+  #         submodules: recursive
+  #     - name: Set up cache
+  #       id: cache
+  #       uses: actions/cache@v4
+  #       with:
+  #         path: |
+  #           ~/PawPawBuilds
+  #           src/Rack/dep/bin
+  #           src/Rack/dep/include
+  #           src/Rack/dep/lib
+  #           src/Rack/dep/share
+  #           src/Rack/dep/jansson-2.12
+  #           src/Rack/dep/libarchive-3.4.3
+  #           src/Rack/dep/libsamplerate-0.1.9
+  #           src/Rack/dep/zstd-1.4.5
+  #         key: macos-universal-v${{ env.CACHE_VERSION }}
+  #     - name: Setup dependencies
+  #       run: |
+  #         brew uninstall --force --ignore-dependencies cmake
+  #         ./deps/PawPaw/.github/workflows/bootstrap-deps.sh macos-universal-10.15
+  #     - name: Build extra dependencies
+  #       run: |
+  #         export PATH="/usr/local/opt/ccache/libexec:${PATH}"
+  #         ./deps/PawPaw/bootstrap-cardinal.sh macos-universal-10.15 && ./deps/PawPaw/.cleanup.sh macos-universal-10.15
+  #     - name: Set up ccache
+  #       if: steps.cache.outputs.cache-hit == 'true'
+  #       uses: hendrikmuhs/ccache-action@v1.2
+  #       with:
+  #         key: ccache-macos-universal-v${{ env.CACHE_VERSION }}
+  #     - name: Build macOS (base)
+  #       if: steps.cache.outputs.cache-hit == 'true'
+  #       shell: bash
+  #       run: |
+  #         export PATH="/usr/local/opt/ccache/libexec:${PATH}"
+  #         source deps/PawPaw/local.env macos-universal-10.15
+  #         make features
+  #         make NOOPT=true ${MAKE_ARGS} -j $(sysctl -n hw.logicalcpu)
+  #     - name: Build macOS (packaging)
+  #       if: steps.cache.outputs.cache-hit == 'true'
+  #       shell: bash
+  #       env:
+  #         MACOS_APP_CERTIFICATE: ${{ secrets.MACOS_APP_CERTIFICATE }}
+  #         MACOS_INSTALLER_CERTIFICATE: ${{ secrets.MACOS_INSTALLER_CERTIFICATE }}
+  #         MACOS_CERTIFICATE_PASSWORD: ${{ secrets.MACOS_CERTIFICATE_PASSWORD }}
+  #         MACOS_NOTARIZATION_USER: ${{ secrets.MACOS_NOTARIZATION_USER }}
+  #         MACOS_NOTARIZATION_PASS: ${{ secrets.MACOS_NOTARIZATION_PASS }}
+  #         MACOS_NOTARIZATION_TEAM: ${{ secrets.MACOS_NOTARIZATION_TEAM }}
+  #       run: |
+  #         source deps/PawPaw/local.env macos-universal-10.15
+  #         ./utils/create-macos-installer.sh
+  #     - name: Set sha8 (non-release)
+  #       if: startsWith(github.ref, 'refs/tags/') != true
+  #       run: echo "SHA8=$(echo ${{ github.sha }} | cut -c1-8)" >> $GITHUB_ENV
+  #     - name: Set sha8 (release)
+  #       if: startsWith(github.ref, 'refs/tags/')
+  #       run: echo "SHA8=$(echo ${{ github.ref_name }})" >> $GITHUB_ENV
+  #     - name: Rename macOS bundle
+  #       if: steps.cache.outputs.cache-hit == 'true'
+  #       run: |
+  #         mv ${{ github.event.repository.name }}-macOS.pkg ${{ github.event.repository.name }}-macOS-universal-${{ github.event.pull_request.number || env.SHA8 }}.pkg
+  #     - uses: actions/upload-artifact@v4
+  #       with:
+  #         name: ${{ github.event.repository.name }}-macOS-universal-${{ github.event.pull_request.number || env.SHA8 }}
+  #         path: |
+  #           ${{ github.event.repository.name }}-*.pkg
+  #     - uses: softprops/action-gh-release@v1
+  #       if: ${{ matrix.debug == '0' && startsWith(github.ref, 'refs/tags/') }}
+  #       with:
+  #         tag_name: ${{ github.ref_name }}
+  #         name: ${{ github.ref_name }}
+  #         draft: false
+  #         prerelease: false
+  #         files: |
+  #           ${{ github.event.repository.name }}-*.pkg
 
-  mod-plugin-builder:
-    strategy:
-      matrix:
-        include:
-          - name: darkglass-anagram
-            target: darkglass-anagram
-          - name: modduo
-            target: modduo-static
-            extraflags: MODDUO=true
-          - name: modduox
-            target: modduox-static
-          - name: moddwarf
-            target: moddwarf
-    runs-on: ubuntu-22.04
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          submodules: recursive
-      - name: Set up cache
-        uses: actions/cache@v4
-        id: mpb-cache
-        with:
-          path: |
-            ~/mod-workdir
-          key: ${{ matrix.target }}-v${{ env.CACHE_VERSION }}
-      - name: Set up dependencies
-        run: |
-          sudo apt-get update -qq
-          sudo apt-get install -yqq acl bc curl cvs git mercurial rsync subversion wget bison bzip2 flex gawk gperf gzip help2man nano perl patch tar texinfo unzip automake binutils build-essential cpio libtool libncurses-dev pkg-config python3 libtool-bin liblo-dev qemu-user-static
-          sudo apt-get install -yqq pandoc texlive-latex-recommended texlive-latex-extra
-          sudo apt-get clean
-      - name: Bootstrap toolchain
-        if: steps.mpb-cache.outputs.cache-hit != 'true'
-        run: |
-          git clone --depth=1 https://github.com/moddevices/mod-plugin-builder.git deps/mod-plugin-builder
-          sed -i "s/CT_LOG_PROGRESS_BAR=y/CT_LOG_PROGRESS_BAR=n/" deps/mod-plugin-builder/toolchain/*.config
-          $(pwd)/deps/mod-plugin-builder/bootstrap.sh ${{ matrix.target }} minimal && $(pwd)/deps/mod-plugin-builder/.clean-install.sh ${{ matrix.target }}
-      - name: Build for modaudio
-        if: steps.mpb-cache.outputs.cache-hit == 'true'
-        run: |
-          make HEADLESS=true ${{ matrix.name }}-features
-          make HEADLESS=true ${{ matrix.extraflags }} ${{ matrix.name }} -j $(nproc)
-      - name: Set sha8
-        id: slug
-        run: echo "SHA8=$(echo ${{ github.sha }} | cut -c1-8)" >> $GITHUB_ENV
-      - name: Pack binaries
-        if: steps.mpb-cache.outputs.cache-hit == 'true'
-        run: |
-          tar -c -h --hard-dereference -z -f ${{ github.event.repository.name }}-${{ matrix.name }}-${{ github.event.pull_request.number || env.SHA8 }}.tar.gz -C bin $(ls bin | grep lv2)
-      - uses: actions/upload-artifact@v4
-        with:
-          name: ${{ github.event.repository.name }}-${{ matrix.name }}-${{ github.event.pull_request.number || env.SHA8 }}
-          path: |
-            *.tar.gz
+  # mod-plugin-builder:
+  #   strategy:
+  #     matrix:
+  #       include:
+  #         - name: darkglass-anagram
+  #           target: darkglass-anagram
+  #         - name: modduo
+  #           target: modduo-static
+  #           extraflags: MODDUO=true
+  #         - name: modduox
+  #           target: modduox-static
+  #         - name: moddwarf
+  #           target: moddwarf
+  #   runs-on: ubuntu-22.04
+  #   steps:
+  #     - uses: actions/checkout@v4
+  #       with:
+  #         submodules: recursive
+  #     - name: Set up cache
+  #       uses: actions/cache@v4
+  #       id: mpb-cache
+  #       with:
+  #         path: |
+  #           ~/mod-workdir
+  #         key: ${{ matrix.target }}-v${{ env.CACHE_VERSION }}
+  #     - name: Set up dependencies
+  #       run: |
+  #         sudo apt-get update -qq
+  #         sudo apt-get install -yqq acl bc curl cvs git mercurial rsync subversion wget bison bzip2 flex gawk gperf gzip help2man nano perl patch tar texinfo unzip automake binutils build-essential cpio libtool libncurses-dev pkg-config python3 libtool-bin liblo-dev qemu-user-static
+  #         sudo apt-get install -yqq pandoc texlive-latex-recommended texlive-latex-extra
+  #         sudo apt-get clean
+  #     - name: Bootstrap toolchain
+  #       if: steps.mpb-cache.outputs.cache-hit != 'true'
+  #       run: |
+  #         git clone --depth=1 https://github.com/moddevices/mod-plugin-builder.git deps/mod-plugin-builder
+  #         sed -i "s/CT_LOG_PROGRESS_BAR=y/CT_LOG_PROGRESS_BAR=n/" deps/mod-plugin-builder/toolchain/*.config
+  #         $(pwd)/deps/mod-plugin-builder/bootstrap.sh ${{ matrix.target }} minimal && $(pwd)/deps/mod-plugin-builder/.clean-install.sh ${{ matrix.target }}
+  #     - name: Build for modaudio
+  #       if: steps.mpb-cache.outputs.cache-hit == 'true'
+  #       run: |
+  #         make HEADLESS=true ${{ matrix.name }}-features
+  #         make HEADLESS=true ${{ matrix.extraflags }} ${{ matrix.name }} -j $(nproc)
+  #     - name: Set sha8
+  #       id: slug
+  #       run: echo "SHA8=$(echo ${{ github.sha }} | cut -c1-8)" >> $GITHUB_ENV
+  #     - name: Pack binaries
+  #       if: steps.mpb-cache.outputs.cache-hit == 'true'
+  #       run: |
+  #         tar -c -h --hard-dereference -z -f ${{ github.event.repository.name }}-${{ matrix.name }}-${{ github.event.pull_request.number || env.SHA8 }}.tar.gz -C bin $(ls bin | grep lv2)
+  #     - uses: actions/upload-artifact@v4
+  #       with:
+  #         name: ${{ github.event.repository.name }}-${{ matrix.name }}-${{ github.event.pull_request.number || env.SHA8 }}
+  #         path: |
+  #           *.tar.gz
 
-  wasm:
-    strategy:
-      matrix:
-        target: [simd, nosimd]
-    runs-on: ubuntu-22.04
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          submodules: recursive
-      - name: Set up cache
-        id: cache
-        uses: actions/cache@v4
-        with:
-          path: |
-            ~/PawPawBuilds
-            src/Rack/dep/bin
-            src/Rack/dep/include
-            src/Rack/dep/lib
-            src/Rack/dep/share
-            src/Rack/dep/jansson-2.12
-            src/Rack/dep/libarchive-3.4.3
-            src/Rack/dep/libsamplerate-0.1.9
-            src/Rack/dep/zstd-1.4.5
-          key: wasm-${{ matrix.target }}-v${{ env.CACHE_VERSION }}
-      - name: Set up dependencies
-        run: |
-          sudo apt-get update -qq
-          sudo apt-get install -yqq brotli gperf meson
-          sudo apt-get clean
-      - name: Build extra dependencies
-        run: |
-          ${{ matrix.target == 'nosimd' }} && export PAWPAW_NOSIMD=1
-          ./deps/PawPaw/bootstrap-cardinal.sh wasm && ./deps/PawPaw/.cleanup.sh wasm
-      - name: Build wasm cross-compiled
-        if: steps.cache.outputs.cache-hit == 'true'
-        shell: bash
-        run: |
-          ${{ matrix.target == 'nosimd' }} && export PAWPAW_NOSIMD=1
-          source deps/PawPaw/local.env wasm
-          # FIXME send patch upstream, assuming this works..
-          sed -i -e 's/defined(__riscv)/defined(__riscv) || defined(__EMSCRIPTEN__)/' plugins/surgext/surge/src/common/globals.h
-          make features
-          make HAVE_LIBLO=false NOOPT=true NOSIMD=${{ matrix.target == 'nosimd' }} -j $(nproc)
-      - name: Build modgui
-        if: steps.cache.outputs.cache-hit == 'true'
-        shell: bash
-        run: |
-          ${{ matrix.target == 'nosimd' }} && export PAWPAW_NOSIMD=1
-          source deps/PawPaw/local.env wasm
-          make HAVE_LIBLO=false NOOPT=true NOSIMD=${{ matrix.target == 'nosimd' }} -j $(nproc) modgui
-      - name: Make wasm versioned and compress
-        if: steps.cache.outputs.cache-hit == 'true'
-        shell: bash
-        run: |
-          ${{ matrix.target == 'nosimd' }} && export SUFFIX="-nosimd"
-          VERSION=$(cat Makefile | awk 'sub("VERSION = ","")')
-          cd bin
-          sed -i "s/CardinalMini\./CardinalMini-v${VERSION}\./g" *.html *.js
-          sed -i "s/CardinalNative\./CardinalNative-v${VERSION}\./g" *.html *.js
-          sed -i "s/CardinalMini-nosimd\./CardinalMini-nosimd-v${VERSION}\./g" *.html *.js
-          sed -i "s/CardinalNative-nosimd\./CardinalNative-nosimd-v${VERSION}\./g" *.html *.js
-          mv CardinalMini.data   CardinalMini${SUFFIX}-v${VERSION}.data
-          mv CardinalMini.js     CardinalMini${SUFFIX}-v${VERSION}.js
-          mv CardinalMini.wasm   CardinalMini${SUFFIX}-v${VERSION}.wasm
-          mv CardinalNative.data CardinalNative${SUFFIX}-v${VERSION}.data
-          mv CardinalNative.js   CardinalNative${SUFFIX}-v${VERSION}.js
-          mv CardinalNative.wasm CardinalNative${SUFFIX}-v${VERSION}.wasm
-          brotli -k -q 11 *.data *.html *.js *.wasm
-      - name: Set sha8 (non-release)
-        if: startsWith(github.ref, 'refs/tags/') != true
-        run: echo "SHA8=$(echo ${{ github.sha }} | cut -c1-8)" >> $GITHUB_ENV
-      - name: Set sha8 (release)
-        if: startsWith(github.ref, 'refs/tags/')
-        run: echo "SHA8=$(echo ${{ github.ref_name }})" >> $GITHUB_ENV
-      - name: Pack binaries
-        if: steps.cache.outputs.cache-hit == 'true'
-        run: |
-          cd bin; zip -r -9 ../${{ github.event.repository.name }}-wasm-${{ matrix.target }}-${{ github.event.pull_request.number || env.SHA8 }}.zip $(ls *.br *.html *.data *.js *.wasm) CardinalMini.lv2/modgui
-      - uses: actions/upload-artifact@v4
-        with:
-          name: ${{ github.event.repository.name }}-wasm-${{ matrix.target }}-${{ github.event.pull_request.number || env.SHA8 }}
-          path: |
-            *.zip
-      - uses: softprops/action-gh-release@v1
-        if: startsWith(github.ref, 'refs/tags/')
-        with:
-          tag_name: ${{ github.ref_name }}
-          name: ${{ github.ref_name }}
-          draft: false
-          prerelease: false
-          files: |
-            *.zip
+  # wasm:
+  #   strategy:
+  #     matrix:
+  #       target: [simd, nosimd]
+  #   runs-on: ubuntu-22.04
+  #   steps:
+  #     - uses: actions/checkout@v4
+  #       with:
+  #         submodules: recursive
+  #     - name: Set up cache
+  #       id: cache
+  #       uses: actions/cache@v4
+  #       with:
+  #         path: |
+  #           ~/PawPawBuilds
+  #           src/Rack/dep/bin
+  #           src/Rack/dep/include
+  #           src/Rack/dep/lib
+  #           src/Rack/dep/share
+  #           src/Rack/dep/jansson-2.12
+  #           src/Rack/dep/libarchive-3.4.3
+  #           src/Rack/dep/libsamplerate-0.1.9
+  #           src/Rack/dep/zstd-1.4.5
+  #         key: wasm-${{ matrix.target }}-v${{ env.CACHE_VERSION }}
+  #     - name: Set up dependencies
+  #       run: |
+  #         sudo apt-get update -qq
+  #         sudo apt-get install -yqq brotli gperf meson
+  #         sudo apt-get clean
+  #     - name: Build extra dependencies
+  #       run: |
+  #         ${{ matrix.target == 'nosimd' }} && export PAWPAW_NOSIMD=1
+  #         ./deps/PawPaw/bootstrap-cardinal.sh wasm && ./deps/PawPaw/.cleanup.sh wasm
+  #     - name: Build wasm cross-compiled
+  #       if: steps.cache.outputs.cache-hit == 'true'
+  #       shell: bash
+  #       run: |
+  #         ${{ matrix.target == 'nosimd' }} && export PAWPAW_NOSIMD=1
+  #         source deps/PawPaw/local.env wasm
+  #         # FIXME send patch upstream, assuming this works..
+  #         sed -i -e 's/defined(__riscv)/defined(__riscv) || defined(__EMSCRIPTEN__)/' plugins/surgext/surge/src/common/globals.h
+  #         make features
+  #         make HAVE_LIBLO=false NOOPT=true NOSIMD=${{ matrix.target == 'nosimd' }} -j $(nproc)
+  #     - name: Build modgui
+  #       if: steps.cache.outputs.cache-hit == 'true'
+  #       shell: bash
+  #       run: |
+  #         ${{ matrix.target == 'nosimd' }} && export PAWPAW_NOSIMD=1
+  #         source deps/PawPaw/local.env wasm
+  #         make HAVE_LIBLO=false NOOPT=true NOSIMD=${{ matrix.target == 'nosimd' }} -j $(nproc) modgui
+  #     - name: Make wasm versioned and compress
+  #       if: steps.cache.outputs.cache-hit == 'true'
+  #       shell: bash
+  #       run: |
+  #         ${{ matrix.target == 'nosimd' }} && export SUFFIX="-nosimd"
+  #         VERSION=$(cat Makefile | awk 'sub("VERSION = ","")')
+  #         cd bin
+  #         sed -i "s/CardinalMini\./CardinalMini-v${VERSION}\./g" *.html *.js
+  #         sed -i "s/CardinalNative\./CardinalNative-v${VERSION}\./g" *.html *.js
+  #         sed -i "s/CardinalMini-nosimd\./CardinalMini-nosimd-v${VERSION}\./g" *.html *.js
+  #         sed -i "s/CardinalNative-nosimd\./CardinalNative-nosimd-v${VERSION}\./g" *.html *.js
+  #         mv CardinalMini.data   CardinalMini${SUFFIX}-v${VERSION}.data
+  #         mv CardinalMini.js     CardinalMini${SUFFIX}-v${VERSION}.js
+  #         mv CardinalMini.wasm   CardinalMini${SUFFIX}-v${VERSION}.wasm
+  #         mv CardinalNative.data CardinalNative${SUFFIX}-v${VERSION}.data
+  #         mv CardinalNative.js   CardinalNative${SUFFIX}-v${VERSION}.js
+  #         mv CardinalNative.wasm CardinalNative${SUFFIX}-v${VERSION}.wasm
+  #         brotli -k -q 11 *.data *.html *.js *.wasm
+  #     - name: Set sha8 (non-release)
+  #       if: startsWith(github.ref, 'refs/tags/') != true
+  #       run: echo "SHA8=$(echo ${{ github.sha }} | cut -c1-8)" >> $GITHUB_ENV
+  #     - name: Set sha8 (release)
+  #       if: startsWith(github.ref, 'refs/tags/')
+  #       run: echo "SHA8=$(echo ${{ github.ref_name }})" >> $GITHUB_ENV
+  #     - name: Pack binaries
+  #       if: steps.cache.outputs.cache-hit == 'true'
+  #       run: |
+  #         cd bin; zip -r -9 ../${{ github.event.repository.name }}-wasm-${{ matrix.target }}-${{ github.event.pull_request.number || env.SHA8 }}.zip $(ls *.br *.html *.data *.js *.wasm) CardinalMini.lv2/modgui
+  #     - uses: actions/upload-artifact@v4
+  #       with:
+  #         name: ${{ github.event.repository.name }}-wasm-${{ matrix.target }}-${{ github.event.pull_request.number || env.SHA8 }}
+  #         path: |
+  #           *.zip
+  #     - uses: softprops/action-gh-release@v1
+  #       if: startsWith(github.ref, 'refs/tags/')
+  #       with:
+  #         tag_name: ${{ github.ref_name }}
+  #         name: ${{ github.ref_name }}
+  #         draft: false
+  #         prerelease: false
+  #         files: |
+  #           *.zip
 
-  windows:
-    strategy:
-      matrix:
-        target: [win32, win64]
-    runs-on: ubuntu-latest
-    container:
-      image: ubuntu:22.04
-    steps:
-      - name: Install git
-        run: |
-          apt-get update -qq && apt-get install -yqq --no-install-recommends ca-certificates git openssl
-      - uses: actions/checkout@v4
-        with:
-          submodules: recursive
-      - name: Set up cache
-        id: cache
-        uses: actions/cache@v4
-        with:
-          path: |
-            ~/PawPawBuilds
-            src/Rack/dep/bin
-            src/Rack/dep/include
-            src/Rack/dep/lib
-            src/Rack/dep/share
-            src/Rack/dep/jansson-2.12
-            src/Rack/dep/libarchive-3.4.3
-            src/Rack/dep/libsamplerate-0.1.9
-            src/Rack/dep/zstd-1.4.5
-          key: ${{ matrix.target }}-v${{ env.CACHE_VERSION }}
-      - name: Set up dependencies
-        run: |
-          ./deps/PawPaw/.github/workflows/bootstrap-deps.sh ${{ matrix.target }}
-          apt-get install -yqq wget xvfb zip
-          apt-get clean
-      - name: Set up ccache
-        uses: hendrikmuhs/ccache-action@v1.2
-        with:
-          key: ccache-${{ matrix.target }}-v${{ env.CACHE_VERSION }}
-      - name: Build extra dependencies
-        run: |
-          ./deps/PawPaw/bootstrap-cardinal.sh ${{ matrix.target }} && ./deps/PawPaw/.cleanup.sh ${{ matrix.target }}
-      - name: Build cross-compiled (base)
-        if: steps.cache.outputs.cache-hit == 'true'
-        shell: bash
-        run: |
-          export PATH="/usr/lib/ccache:${PATH}"
-          source deps/PawPaw/local.env ${{ matrix.target }}
-          make features
-          xvfb-run make NOOPT=true -j $(nproc)
-      - name: Build cross-compiled (carla)
-        if: steps.cache.outputs.cache-hit == 'true'
-        shell: bash
-        run: |
-          export PATH="/usr/lib/ccache:${PATH}"
-          source deps/PawPaw/local.env ${{ matrix.target }}
-          make carla-win32 -j $(nproc)
-          make -C carla EMBED_TARGET=true TESTING=true dist
-          make -C carla EMBED_TARGET=true TESTING=true dist
-      - name: Build cross-compiled (packaging)
-        if: steps.cache.outputs.cache-hit == 'true'
-        shell: bash
-        run: |
-          source deps/PawPaw/local.env ${{ matrix.target }}
-          xvfb-run ./utils/create-windows-installer.sh ${{ matrix.target }}
-          make unzipfx
-      - name: Set sha8 (non-release)
-        if: startsWith(github.ref, 'refs/tags/') != true
-        run: echo "SHA8=$(echo ${{ github.sha }} | cut -c1-8)" >> $GITHUB_ENV
-      - name: Set sha8 (release)
-        if: startsWith(github.ref, 'refs/tags/')
-        run: echo "SHA8=$(echo ${{ github.ref_name }})" >> $GITHUB_ENV
-      - name: Pack binaries
-        if: steps.cache.outputs.cache-hit == 'true'
-        shell: bash
-        run: |
-          pushd bin
-          zip -r -9 ../${{ github.event.repository.name }}-${{ matrix.target }}-${{ github.event.pull_request.number || env.SHA8 }}.zip $(ls | grep -e lv2 -e vst -e clap)
-          popd
-          zip -u -9 ${{ github.event.repository.name }}-${{ matrix.target }}-${{ github.event.pull_request.number || env.SHA8 }}.zip LICENSE README.md docs/*.* CardinalJACK.exe CardinalNative.exe
-      - uses: actions/upload-artifact@v4
-        with:
-          name: ${{ github.event.repository.name }}-${{ matrix.target }}-${{ github.event.pull_request.number || env.SHA8 }}
-          path: |
-            Cardinal-*.exe
-            Cardinal-*.zip
-      - uses: softprops/action-gh-release@v1
-        if: startsWith(github.ref, 'refs/tags/')
-        with:
-          tag_name: ${{ github.ref_name }}
-          name: ${{ github.ref_name }}
-          draft: false
-          prerelease: false
-          files: |
-            Cardinal-*.exe
-            Cardinal-*.zip
+  # windows:
+  #   strategy:
+  #     matrix:
+  #       target: [win32, win64]
+  #   runs-on: ubuntu-latest
+  #   container:
+  #     image: ubuntu:22.04
+  #   steps:
+  #     - name: Install git
+  #       run: |
+  #         apt-get update -qq && apt-get install -yqq --no-install-recommends ca-certificates git openssl
+  #     - uses: actions/checkout@v4
+  #       with:
+  #         submodules: recursive
+  #     - name: Set up cache
+  #       id: cache
+  #       uses: actions/cache@v4
+  #       with:
+  #         path: |
+  #           ~/PawPawBuilds
+  #           src/Rack/dep/bin
+  #           src/Rack/dep/include
+  #           src/Rack/dep/lib
+  #           src/Rack/dep/share
+  #           src/Rack/dep/jansson-2.12
+  #           src/Rack/dep/libarchive-3.4.3
+  #           src/Rack/dep/libsamplerate-0.1.9
+  #           src/Rack/dep/zstd-1.4.5
+  #         key: ${{ matrix.target }}-v${{ env.CACHE_VERSION }}
+  #     - name: Set up dependencies
+  #       run: |
+  #         ./deps/PawPaw/.github/workflows/bootstrap-deps.sh ${{ matrix.target }}
+  #         apt-get install -yqq wget xvfb zip
+  #         apt-get clean
+  #     - name: Set up ccache
+  #       uses: hendrikmuhs/ccache-action@v1.2
+  #       with:
+  #         key: ccache-${{ matrix.target }}-v${{ env.CACHE_VERSION }}
+  #     - name: Build extra dependencies
+  #       run: |
+  #         ./deps/PawPaw/bootstrap-cardinal.sh ${{ matrix.target }} && ./deps/PawPaw/.cleanup.sh ${{ matrix.target }}
+  #     - name: Build cross-compiled (base)
+  #       if: steps.cache.outputs.cache-hit == 'true'
+  #       shell: bash
+  #       run: |
+  #         export PATH="/usr/lib/ccache:${PATH}"
+  #         source deps/PawPaw/local.env ${{ matrix.target }}
+  #         make features
+  #         xvfb-run make NOOPT=true -j $(nproc)
+  #     - name: Build cross-compiled (carla)
+  #       if: steps.cache.outputs.cache-hit == 'true'
+  #       shell: bash
+  #       run: |
+  #         export PATH="/usr/lib/ccache:${PATH}"
+  #         source deps/PawPaw/local.env ${{ matrix.target }}
+  #         make carla-win32 -j $(nproc)
+  #         make -C carla EMBED_TARGET=true TESTING=true dist
+  #         make -C carla EMBED_TARGET=true TESTING=true dist
+  #     - name: Build cross-compiled (packaging)
+  #       if: steps.cache.outputs.cache-hit == 'true'
+  #       shell: bash
+  #       run: |
+  #         source deps/PawPaw/local.env ${{ matrix.target }}
+  #         xvfb-run ./utils/create-windows-installer.sh ${{ matrix.target }}
+  #         make unzipfx
+  #     - name: Set sha8 (non-release)
+  #       if: startsWith(github.ref, 'refs/tags/') != true
+  #       run: echo "SHA8=$(echo ${{ github.sha }} | cut -c1-8)" >> $GITHUB_ENV
+  #     - name: Set sha8 (release)
+  #       if: startsWith(github.ref, 'refs/tags/')
+  #       run: echo "SHA8=$(echo ${{ github.ref_name }})" >> $GITHUB_ENV
+  #     - name: Pack binaries
+  #       if: steps.cache.outputs.cache-hit == 'true'
+  #       shell: bash
+  #       run: |
+  #         pushd bin
+  #         zip -r -9 ../${{ github.event.repository.name }}-${{ matrix.target }}-${{ github.event.pull_request.number || env.SHA8 }}.zip $(ls | grep -e lv2 -e vst -e clap)
+  #         popd
+  #         zip -u -9 ${{ github.event.repository.name }}-${{ matrix.target }}-${{ github.event.pull_request.number || env.SHA8 }}.zip LICENSE README.md docs/*.* CardinalJACK.exe CardinalNative.exe
+  #     - uses: actions/upload-artifact@v4
+  #       with:
+  #         name: ${{ github.event.repository.name }}-${{ matrix.target }}-${{ github.event.pull_request.number || env.SHA8 }}
+  #         path: |
+  #           Cardinal-*.exe
+  #           Cardinal-*.zip
+  #     - uses: softprops/action-gh-release@v1
+  #       if: startsWith(github.ref, 'refs/tags/')
+  #       with:
+  #         tag_name: ${{ github.ref_name }}
+  #         name: ${{ github.ref_name }}
+  #         draft: false
+  #         prerelease: false
+  #         files: |
+  #           Cardinal-*.exe
+  #           Cardinal-*.zip
 
-  headless:
-    runs-on: ubuntu-22.04
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          submodules: recursive
-      - name: Set up dependencies
-        run: |
-          sudo apt-get update -qq
-          sudo apt-get remove -yqq libcairo2-dev libx11-dev libx11-dev libxext-dev
-          sudo apt-get install -yqq liblo-dev
-          sudo apt-get clean
-      - name: Build linux (headless)
-        run: |
-          make HEADLESS=true features
-          make HEADLESS=true -j $(nproc)
+  # headless:
+  #   runs-on: ubuntu-22.04
+  #   steps:
+  #     - uses: actions/checkout@v4
+  #       with:
+  #         submodules: recursive
+  #     - name: Set up dependencies
+  #       run: |
+  #         sudo apt-get update -qq
+  #         sudo apt-get remove -yqq libcairo2-dev libx11-dev libx11-dev libxext-dev
+  #         sudo apt-get install -yqq liblo-dev
+  #         sudo apt-get clean
+  #     - name: Build linux (headless)
+  #       run: |
+  #         make HEADLESS=true features
+  #         make HEADLESS=true -j $(nproc)
 
-  lto:
-    runs-on: ubuntu-22.04
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          submodules: recursive
-      - name: Set up dependencies
-        run: |
-          sudo apt-get update -qq
-          sudo apt-get install -yqq libasound2-dev libdbus-1-dev libgl1-mesa-dev liblo-dev libsdl2-dev libx11-dev libxcursor-dev libxext-dev libxrandr-dev
-          sudo apt-get clean
-      - name: Build linux (LTO)
-        run: |
-          make features
-          make WITH_LTO=true -j $(nproc) mini
-          make WITH_LTO=true -j $(nproc) native
+  # lto:
+  #   runs-on: ubuntu-22.04
+  #   steps:
+  #     - uses: actions/checkout@v4
+  #       with:
+  #         submodules: recursive
+  #     - name: Set up dependencies
+  #       run: |
+  #         sudo apt-get update -qq
+  #         sudo apt-get install -yqq libasound2-dev libdbus-1-dev libgl1-mesa-dev liblo-dev libsdl2-dev libx11-dev libxcursor-dev libxext-dev libxrandr-dev
+  #         sudo apt-get clean
+  #     - name: Build linux (LTO)
+  #       run: |
+  #         make features
+  #         make WITH_LTO=true -j $(nproc) mini
+  #         make WITH_LTO=true -j $(nproc) native
 
-  sysdeps:
-    runs-on: ubuntu-22.04
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          submodules: recursive
-      - name: Set up dependencies
-        run: |
-          sudo apt-get update -qq
-          sudo apt-get install -yqq libdbus-1-dev libgl1-mesa-dev liblo-dev libx11-dev libxcursor-dev libxext-dev libxrandr-dev libarchive-dev libfftw3-dev libjansson-dev libsamplerate0-dev libsndfile1-dev libspeexdsp-dev
-          sudo apt-get clean
-      - name: Build linux (sysdeps)
-        run: |
-          make features
-          make SYSDEPS=true -j $(nproc)
+  # sysdeps:
+  #   runs-on: ubuntu-22.04
+  #   steps:
+  #     - uses: actions/checkout@v4
+  #       with:
+  #         submodules: recursive
+  #     - name: Set up dependencies
+  #       run: |
+  #         sudo apt-get update -qq
+  #         sudo apt-get install -yqq libdbus-1-dev libgl1-mesa-dev liblo-dev libx11-dev libxcursor-dev libxext-dev libxrandr-dev libarchive-dev libfftw3-dev libjansson-dev libsamplerate0-dev libsndfile1-dev libspeexdsp-dev
+  #         sudo apt-get clean
+  #     - name: Build linux (sysdeps)
+  #       run: |
+  #         make features
+  #         make SYSDEPS=true -j $(nproc)
 
-  source-tarball:
-    runs-on: ubuntu-22.04
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          submodules: recursive
-      - name: Set up dependencies
-        run: |
-          sudo apt-get update -qq
-          sudo apt-get install -yqq liblo-dev
-          sudo apt-get clean
-      - name: Create source tarball
-        run: |
-          make HEADLESS=true tarball
-          make HEADLESS=true tarball+deps
-      - name: Set sha8 (non-release)
-        if: startsWith(github.ref, 'refs/tags/') != true
-        run: echo "SHA8=$(echo ${{ github.sha }} | cut -c1-8)" >> $GITHUB_ENV
-      - name: Set sha8 (release)
-        if: startsWith(github.ref, 'refs/tags/')
-        run: echo "SHA8=$(echo ${{ github.ref_name }})" >> $GITHUB_ENV
-      - uses: actions/upload-artifact@v4
-        with:
-          name: ${{ github.event.repository.name }}-source-${{ github.event.pull_request.number || env.SHA8 }}
-          path: |
-            /home/runner/cardinal*.tar.xz
-            /home/runner/*/cardinal*.tar.xz
-            /home/runner/*/*/cardinal*.tar.xz
-      - uses: softprops/action-gh-release@v1
-        if: startsWith(github.ref, 'refs/tags/')
-        with:
-          tag_name: ${{ github.ref_name }}
-          name: ${{ github.ref_name }}
-          draft: false
-          prerelease: false
-          files: |
-            /home/runner/cardinal*.tar.xz
-            /home/runner/*/cardinal*.tar.xz
-            /home/runner/*/*/cardinal*.tar.xz
+  # source-tarball:
+  #   runs-on: ubuntu-22.04
+  #   steps:
+  #     - uses: actions/checkout@v4
+  #       with:
+  #         submodules: recursive
+  #     - name: Set up dependencies
+  #       run: |
+  #         sudo apt-get update -qq
+  #         sudo apt-get install -yqq liblo-dev
+  #         sudo apt-get clean
+  #     - name: Create source tarball
+  #       run: |
+  #         make HEADLESS=true tarball
+  #         make HEADLESS=true tarball+deps
+  #     - name: Set sha8 (non-release)
+  #       if: startsWith(github.ref, 'refs/tags/') != true
+  #       run: echo "SHA8=$(echo ${{ github.sha }} | cut -c1-8)" >> $GITHUB_ENV
+  #     - name: Set sha8 (release)
+  #       if: startsWith(github.ref, 'refs/tags/')
+  #       run: echo "SHA8=$(echo ${{ github.ref_name }})" >> $GITHUB_ENV
+  #     - uses: actions/upload-artifact@v4
+  #       with:
+  #         name: ${{ github.event.repository.name }}-source-${{ github.event.pull_request.number || env.SHA8 }}
+  #         path: |
+  #           /home/runner/cardinal*.tar.xz
+  #           /home/runner/*/cardinal*.tar.xz
+  #           /home/runner/*/*/cardinal*.tar.xz
+  #     - uses: softprops/action-gh-release@v1
+  #       if: startsWith(github.ref, 'refs/tags/')
+  #       with:
+  #         tag_name: ${{ github.ref_name }}
+  #         name: ${{ github.ref_name }}
+  #         draft: false
+  #         prerelease: false
+  #         files: |
+  #           /home/runner/cardinal*.tar.xz
+  #           /home/runner/*/cardinal*.tar.xz
+  #           /home/runner/*/*/cardinal*.tar.xz
 
-  plugin-validation:
-    runs-on: ubuntu-22.04
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          submodules: recursive
-      - name: Set up cache
-        id: cache
-        uses: actions/cache@v4
-        with:
-          path: |
-            src/Rack/dep/bin
-            src/Rack/dep/include
-            src/Rack/dep/lib
-            src/Rack/dep/share
-            src/Rack/dep/jansson-2.12
-            src/Rack/dep/libarchive-3.4.3
-            src/Rack/dep/libsamplerate-0.1.9
-            src/Rack/dep/zstd-1.4.5
-          key: pluginval-v${{ env.CACHE_VERSION }}
-      - name: Set up dependencies
-        run: |
-          # custom repos
-          wget https://launchpad.net/~kxstudio-debian/+archive/kxstudio/+files/kxstudio-repos_11.2.0_all.deb
-          sudo dpkg -i kxstudio-repos_11.2.0_all.deb
-          sudo apt-get update -qq
-          # build-deps
-          sudo apt-get install -yqq libdbus-1-dev libgl1-mesa-dev liblo-dev libx11-dev libxcursor-dev libxext-dev libxrandr-dev
-          # runtime testing
-          sudo apt-get install -yqq carla-git lilv-utils lv2-dev lv2lint kxstudio-lv2-extensions mod-lv2-extensions valgrind xvfb
-          sudo apt-get clean
-      # multiple jobs for building carla, deps and plugins
-      - name: Build Cardinal (carla, deps and plugins)
-        env:
-          CFLAGS: -g
-          CXXFLAGS: -g -DDPF_ABORT_ON_ERROR -DDPF_RUNTIME_TESTING -Wno-pmf-conversions
-          LDFLAGS: -static-libgcc -static-libstdc++
-        run: |
-          make features
-          make CIBUILD=false NOOPT=true SKIP_STRIPPING=true carla deps dgl plugins resources -j $(nproc)
-      # single job for final build stage, otherwise we might get killed due to OOM
-      - name: Build Cardinal (final build stage)
-        env:
-          CFLAGS: -g
-          CXXFLAGS: -g -DDPF_ABORT_ON_ERROR -DDPF_RUNTIME_TESTING -Wno-pmf-conversions
-          LDFLAGS: -static-libgcc -static-libstdc++
-        run: |
-          make features
-          make CIBUILD=false NOOPT=true SKIP_STRIPPING=true -j 1 -C src jack
-          make CIBUILD=false NOOPT=true -j 1
-          ./dpf/utils/generate-ttl.sh
-      - name: Run Cardinal self-tests
-        run: |
-          # --exit-on-first-error=yes
-          xvfb-run valgrind \
-                --gen-suppressions=all \
-                --error-exitcode=255 \
-                --leak-check=no \
-                --track-origins=yes \
-                --keep-debuginfo=yes \
-                --suppressions=./dpf/utils/valgrind-dpf.supp \
-                ./bin/Cardinal selftest
-      - name: Validate LV2 ttl syntax
-        run: |
-          lv2_validate \
-              /usr/lib/lv2/kx-meta/*.ttl \
-              /usr/lib/lv2/kx-control-input-port-change-request.lv2/*.ttl \
-              /usr/lib/lv2/kx-programs.lv2/*.ttl \
-              /usr/lib/lv2/mod.lv2/*.ttl \
-              /usr/lib/lv2/modgui.lv2/*.ttl \
-              ./bin/*.lv2/*.ttl
-      - name: Validate LV2 metadata and binaries
-        run: |
-          export LV2_PATH=/tmp/lv2-path
-          mkdir ${LV2_PATH}
-          mv bin/CardinalFX.lv2 bin/CardinalSynth.lv2 ${LV2_PATH}
-          cp -r /usr/lib/lv2/{atom,buf-size,core,data-access,kx-control-input-port-change-request,kx-programs,instance-access,midi,mod,modgui,parameters,port-groups,port-props,options,patch,presets,resize-port,state,time,ui,units,urid,worker}.lv2 ${LV2_PATH}
-          xvfb-run lv2lint -s lv2_generate_ttl -l ld-linux-x86-64.so.2 -M nopack $(lv2ls)
-      - name: Test LV2 plugin
-        run: |
-            export LV2_PATH=/tmp/lv2-path
-            for p in $(lv2ls); do \
-                env CARLA_BRIDGE_DUMMY=1 CARLA_BRIDGE_TESTING=native \
-                    xvfb-run valgrind \
-                    --error-exitcode=255 \
-                    --leak-check=no \
-                    --track-origins=yes \
-                    --keep-debuginfo=yes \
-                    --suppressions=./dpf/utils/valgrind-dpf.supp \
-                    /usr/lib/carla/carla-bridge-native lv2 "" ${p}; \
-            done
-      - name: Test VST2 plugin
-        run: |
-            for p in $(ls bin/*.vst/*.so); do \
-                env CARLA_BRIDGE_DUMMY=1 CARLA_BRIDGE_TESTING=native \
-                    xvfb-run valgrind \
-                    --error-exitcode=255 \
-                    --leak-check=no \
-                    --track-origins=yes \
-                    --keep-debuginfo=yes \
-                    --suppressions=./dpf/utils/valgrind-dpf.supp \
-                    /usr/lib/carla/carla-bridge-native vst2 ./${p} ""; \
-            done
-      - name: Test VST3 plugin
-        run: |
-            for p in $(ls bin/ | grep vst3); do \
-                env CARLA_BRIDGE_DUMMY=1 CARLA_BRIDGE_TESTING=native \
-                    xvfb-run valgrind \
-                    --error-exitcode=255 \
-                    --leak-check=no \
-                    --track-origins=yes \
-                    --keep-debuginfo=yes \
-                    --suppressions=./dpf/utils/valgrind-dpf.supp \
-                    /usr/lib/carla/carla-bridge-native vst3 ./bin/${p} ""; \
-            done
+  # plugin-validation:
+  #   runs-on: ubuntu-22.04
+  #   steps:
+  #     - uses: actions/checkout@v4
+  #       with:
+  #         submodules: recursive
+  #     - name: Set up cache
+  #       id: cache
+  #       uses: actions/cache@v4
+  #       with:
+  #         path: |
+  #           src/Rack/dep/bin
+  #           src/Rack/dep/include
+  #           src/Rack/dep/lib
+  #           src/Rack/dep/share
+  #           src/Rack/dep/jansson-2.12
+  #           src/Rack/dep/libarchive-3.4.3
+  #           src/Rack/dep/libsamplerate-0.1.9
+  #           src/Rack/dep/zstd-1.4.5
+  #         key: pluginval-v${{ env.CACHE_VERSION }}
+  #     - name: Set up dependencies
+  #       run: |
+  #         # custom repos
+  #         wget https://launchpad.net/~kxstudio-debian/+archive/kxstudio/+files/kxstudio-repos_11.2.0_all.deb
+  #         sudo dpkg -i kxstudio-repos_11.2.0_all.deb
+  #         sudo apt-get update -qq
+  #         # build-deps
+  #         sudo apt-get install -yqq libdbus-1-dev libgl1-mesa-dev liblo-dev libx11-dev libxcursor-dev libxext-dev libxrandr-dev
+  #         # runtime testing
+  #         sudo apt-get install -yqq carla-git lilv-utils lv2-dev lv2lint kxstudio-lv2-extensions mod-lv2-extensions valgrind xvfb
+  #         sudo apt-get clean
+  #     # multiple jobs for building carla, deps and plugins
+  #     - name: Build Cardinal (carla, deps and plugins)
+  #       env:
+  #         CFLAGS: -g
+  #         CXXFLAGS: -g -DDPF_ABORT_ON_ERROR -DDPF_RUNTIME_TESTING -Wno-pmf-conversions
+  #         LDFLAGS: -static-libgcc -static-libstdc++
+  #       run: |
+  #         make features
+  #         make CIBUILD=false NOOPT=true SKIP_STRIPPING=true carla deps dgl plugins resources -j $(nproc)
+  #     # single job for final build stage, otherwise we might get killed due to OOM
+  #     - name: Build Cardinal (final build stage)
+  #       env:
+  #         CFLAGS: -g
+  #         CXXFLAGS: -g -DDPF_ABORT_ON_ERROR -DDPF_RUNTIME_TESTING -Wno-pmf-conversions
+  #         LDFLAGS: -static-libgcc -static-libstdc++
+  #       run: |
+  #         make features
+  #         make CIBUILD=false NOOPT=true SKIP_STRIPPING=true -j 1 -C src jack
+  #         make CIBUILD=false NOOPT=true -j 1
+  #         ./dpf/utils/generate-ttl.sh
+  #     - name: Run Cardinal self-tests
+  #       run: |
+  #         # --exit-on-first-error=yes
+  #         xvfb-run valgrind \
+  #               --gen-suppressions=all \
+  #               --error-exitcode=255 \
+  #               --leak-check=no \
+  #               --track-origins=yes \
+  #               --keep-debuginfo=yes \
+  #               --suppressions=./dpf/utils/valgrind-dpf.supp \
+  #               ./bin/Cardinal selftest
+  #     - name: Validate LV2 ttl syntax
+  #       run: |
+  #         lv2_validate \
+  #             /usr/lib/lv2/kx-meta/*.ttl \
+  #             /usr/lib/lv2/kx-control-input-port-change-request.lv2/*.ttl \
+  #             /usr/lib/lv2/kx-programs.lv2/*.ttl \
+  #             /usr/lib/lv2/mod.lv2/*.ttl \
+  #             /usr/lib/lv2/modgui.lv2/*.ttl \
+  #             ./bin/*.lv2/*.ttl
+  #     - name: Validate LV2 metadata and binaries
+  #       run: |
+  #         export LV2_PATH=/tmp/lv2-path
+  #         mkdir ${LV2_PATH}
+  #         mv bin/CardinalFX.lv2 bin/CardinalSynth.lv2 ${LV2_PATH}
+  #         cp -r /usr/lib/lv2/{atom,buf-size,core,data-access,kx-control-input-port-change-request,kx-programs,instance-access,midi,mod,modgui,parameters,port-groups,port-props,options,patch,presets,resize-port,state,time,ui,units,urid,worker}.lv2 ${LV2_PATH}
+  #         xvfb-run lv2lint -s lv2_generate_ttl -l ld-linux-x86-64.so.2 -M nopack $(lv2ls)
+  #     - name: Test LV2 plugin
+  #       run: |
+  #           export LV2_PATH=/tmp/lv2-path
+  #           for p in $(lv2ls); do \
+  #               env CARLA_BRIDGE_DUMMY=1 CARLA_BRIDGE_TESTING=native \
+  #                   xvfb-run valgrind \
+  #                   --error-exitcode=255 \
+  #                   --leak-check=no \
+  #                   --track-origins=yes \
+  #                   --keep-debuginfo=yes \
+  #                   --suppressions=./dpf/utils/valgrind-dpf.supp \
+  #                   /usr/lib/carla/carla-bridge-native lv2 "" ${p}; \
+  #           done
+  #     - name: Test VST2 plugin
+  #       run: |
+  #           for p in $(ls bin/*.vst/*.so); do \
+  #               env CARLA_BRIDGE_DUMMY=1 CARLA_BRIDGE_TESTING=native \
+  #                   xvfb-run valgrind \
+  #                   --error-exitcode=255 \
+  #                   --leak-check=no \
+  #                   --track-origins=yes \
+  #                   --keep-debuginfo=yes \
+  #                   --suppressions=./dpf/utils/valgrind-dpf.supp \
+  #                   /usr/lib/carla/carla-bridge-native vst2 ./${p} ""; \
+  #           done
+  #     - name: Test VST3 plugin
+  #       run: |
+  #           for p in $(ls bin/ | grep vst3); do \
+  #               env CARLA_BRIDGE_DUMMY=1 CARLA_BRIDGE_TESTING=native \
+  #                   xvfb-run valgrind \
+  #                   --error-exitcode=255 \
+  #                   --leak-check=no \
+  #                   --track-origins=yes \
+  #                   --keep-debuginfo=yes \
+  #                   --suppressions=./dpf/utils/valgrind-dpf.supp \
+  #                   /usr/lib/carla/carla-bridge-native vst3 ./bin/${p} ""; \
+  #           done
